@@ -26,6 +26,10 @@ client = TelegramClient(session_name, api_id, api_hash)
 
 @client.on(events.NewMessage(chats=source_channels))
 async def convert_and_repost(event):
+    # ✅ Ignore messages from the converter bot
+    if event.chat.username == converter_bot.replace('@', ''):
+        return
+
     text = event.raw_text or ""
     print(f"\n🔔 New message from: {event.chat.username or event.chat_id}")
 
@@ -91,7 +95,7 @@ async def convert_and_repost(event):
 # === Start bot + keep-alive ===
 async def start_bot():
     await client.start()
-    print("🚀 Bot is live. Watching: skydeal_frostfibre, dealdost, realearnkaro")
+    print("🚀 Bot is live. Watching:", ", ".join(source_channels))
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
