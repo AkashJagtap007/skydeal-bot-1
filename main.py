@@ -9,7 +9,7 @@ session_name = 'skydeal'
 
 # === Telegram usernames ===
 source_channels = ['realearnkaro', 'dealdost', 'skydeal_frostfibre']
-converter_bot = 'ekconverter15bot'  # Updated bot
+converter_bot = 'ekconverter15bot'
 destination_channel = 'SkyDeal247'
 
 # === Supported and Blocked Domains ===
@@ -25,7 +25,7 @@ def extract_supported_links(text):
     links = []
     for url in matches:
         if any(bad in url for bad in blocked_domains):
-            return []
+            return []  # Block whole message
         if any(domain in url for domain in supported_domains):
             links.append(url.strip())
     return links
@@ -52,22 +52,26 @@ async def convert_and_repost(event):
             async with client.conversation(converter_bot, timeout=30) as conv:
                 await conv.send_message(link)
 
-                # 🚫 First message is ignored
+                # 🚫 Ignore first reply (usually just short link)
                 await conv.get_response()
 
-                # ✅ Second message is the actual response to use
-                reply = await conv.get_response()
-                reply_text = reply.text.strip()
+                # ✅ Use only the second reply (final converted message)
+                second_reply = await conv.get_response()
+                reply_text = second_reply.text.strip()
 
-                # Extract converted link
+                # 🔍 Extract the actual converted link from second reply
                 converted_url_match = re.search(r'(https?://[^\s<>]+)', reply_text)
                 if not converted_url_match:
                     continue
+
                 converted_url = converted_url_match.group(1)
+
+                # 🟢 Only replace the original link with this one
                 converted_links[link] = converted_url
 
                 await asyncio.sleep(1.5)
 
+        # 🛠 Replace only original links with converted ones
         final_text = text
         for original, converted in converted_links.items():
             final_text = final_text.replace(original, converted)
@@ -89,6 +93,7 @@ async def convert_and_repost(event):
     except Exception as e:
         print(f"❌ Error: {e}")
 
+# === Run bot ===
 async def main():
     await client.start()
     print("🚀 SkyDeal Bot is running...")
