@@ -58,7 +58,15 @@ async def convert_and_repost(event):
                     reply_text = reply.text.strip()
                     if 'http' in reply_text and len(reply_text) > 20:
                         break
-
+        
+            
+        # ✅ Extract only converted URL
+            converted_url_match = re.search(r'(https?://[^\s<>]+)', reply_text)
+            if not converted_url_match:
+                continue
+            converted_url = converted_url_match.group(1)
+            converted_links[link] = converted_url
+        
         # ✅ Replace original links with converted links in text
         final_text = text
         for original, converted in converted_links.items():
