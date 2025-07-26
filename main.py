@@ -26,14 +26,14 @@ client = TelegramClient(session_name, api_id, api_hash)
 
 @client.on(events.NewMessage(chats=source_channels))
 async def convert_and_repost(event):
-    text = event.raw_text or ""
+    original_text = event.raw_text or ""
     print(f"\n🔔 New message from: {event.chat.username or event.chat_id}")
 
-    if '🛒 Buy now ✅' in text:
+    if '🛒 Buy now ✅' in original_text:
         print("⏩ Already converted. Skipping.")
         return
 
-    links = extract_all_valid_links(text)
+    links = extract_all_valid_links(original_text)
     if not links:
         print("⏩ No links found. Skipping.")
         return
@@ -43,8 +43,6 @@ async def convert_and_repost(event):
         return
 
     converted_links = {}
-    final_text = text
-
     try:
         for link in links:
             print(f"🤖 Converting via @{converter_bot}: {link}")
@@ -55,29 +53,37 @@ async def convert_and_repost(event):
                     reply = await conv.get_response()
                     reply_text = reply.text.strip()
 
-                    # ✅ Skip raw link-only response
+                    # ✅ Skip link-only reply
                     if re.fullmatch(r'https?://[^\s<>]+', reply_text):
                         print("⚠️ Skipped link-only reply.")
                         continue
 
+                    # ✅ Get converted link
                     match = re.search(r'(https?://[^\s<>]+)', reply_text)
                     if match:
-                        converted_link = match.group(1)
-                        converted_links[link] = converted_link
-                        final_text = final_text.replace(link, converted_link)
-                        print(f"✅ Converted: {link} → {converted_link}")
+                        converted_links[link] = match.group(1)
+                        print(f"✅ Converted: {link} → {converted_links[link]}")
                         break
 
                 await asyncio.sleep(1.5)
 
         if not converted_links:
-            print("⛔ No links converted.")
+            print("⛔ No valid links converted.")
             return
 
+        # ✅ Replace original links with converted ones
+        final_text = original_text
+        for original, converted in converted_links.items():
+            final_text = final_text.replace(original, converted)
+
+        # ✅ Add Buy now tag
         final_text += "\n\n🛒 Buy now ✅"
+
+        # ✅ Use first link for button
         button_link = list(converted_links.values())[0]
         button = [[Button.url("🔗 Buy Now", button_link)]]
 
+        # ✅ Send with media if available
         if event.photo or event.document:
             await client.send_file(
                 destination_channel,
