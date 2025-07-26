@@ -50,10 +50,25 @@ async def convert_and_repost(event):
             print(f"🤖 Converting via @{converter_bot}: {link}")
             async with client.conversation(converter_bot, timeout=30) as conv:
                 await conv.send_message(link)
-                reply = await conv.get_response()
-                converted_link = reply.text.strip()
-                converted_links[link] = converted_link
-                print(f"✅ Converted: {link} → {converted_link}")
+
+                # Wait for a meaningful response (not just a plain link)
+                while True:
+                    reply = await conv.get_response()
+                    reply_text = reply.text.strip()
+
+                    # Skip link-only responses
+                    if re.fullmatch(r'https?://[^\s<>]+', reply_text):
+                        print("⚠️ Skipped raw link-only response.")
+                        continue
+
+                    # Extract usable converted link
+                    match = re.search(r'(https?://[^\s<>]+)', reply_text)
+                    if match:
+                        converted_link = match.group(1)
+                        converted_links[link] = converted_link
+                        print(f"✅ Valid converted response: {converted_link}")
+                        break
+
                 await asyncio.sleep(1.5)
 
         if not converted_links:
