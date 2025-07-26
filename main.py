@@ -52,7 +52,13 @@ async def convert_and_repost(event):
                 await conv.send_message(link)
                 reply1 = await conv.get_response()
                 reply2 = await conv.get_response()
-                converted_link = reply2.text.strip()
+
+                # Choose the reply that contains more text
+                if len(reply2.text.strip()) > len(reply1.text.strip()):
+                    converted_link = reply2.text.strip()
+                else:
+                    converted_link = reply1.text.strip()
+
                 converted_links[link] = converted_link
                 print(f"✅ Converted: {link} → {converted_link}")
                 await asyncio.sleep(1.5)
