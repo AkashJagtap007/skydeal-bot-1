@@ -19,7 +19,7 @@ supported_domains = [
     'ekaro.in', 'bit.ly', 'ekart.shop'
 ]
 
-# === Blocked domains (like Myntra) ===
+# === Blocked domains ===
 blocked_domains = ['myntra.com']
 
 # === Extract all supported links ===
@@ -27,8 +27,8 @@ def extract_supported_links(text):
     matches = re.findall(r'(https?://[^\s<>]+)', text)
     links = []
     for url in matches:
-        if any(bad in url for bad in blocked_domains):
-            return []  # Skip entire message if it contains a blocked domain
+        if any(blocked in url for blocked in blocked_domains):
+            return []  # Skip entire message if blocked domain present
         if any(domain in url for domain in supported_domains):
             links.append(url.strip().split('?')[0])
     return links
@@ -55,38 +55,45 @@ async def convert_and_repost(event):
         return
 
     converted_links = {}
+
     try:
         for link in links:
             print(f"🤖 Sending to @{converter_bot}: {link}")
             async with client.conversation(converter_bot, timeout=30) as conv:
                 await conv.send_message(link)
+
                 while True:
                     reply = await conv.get_response()
                     reply_text = reply.text.strip()
                     if len(reply_text) > 30 and 'http' in reply_text:
                         break
-                converted_links[link] = reply_text
-                print(f"✅ Converted: {link} → {reply_text}")
 
-        # Replace original links with converted replies
+            # ✅ Extract only the converted URL from bot's reply
+            converted_url_match = re.search(r'(https?://[^\s<>]+)', reply_text)
+            if not converted_url_match:
+                print(f"⚠️ No valid converted link in: {reply_text}")
+                continue
+
+            converted_url = converted_url_match.group(1)
+            converted_links[link] = converted_url
+            print(f"✅ Converted: {link} → {converted_url}")
+
+        # ✅ Replace all original links with converted links
         final_text = text
         for original, converted in converted_links.items():
             final_text = final_text.replace(original, converted)
 
         final_text += "\n\n#converted"
 
-        # Extract first converted link for the button
-        button_url = None
-        if converted_links:
-            first_reply = list(converted_links.values())[0]
-            found_links = re.findall(r'(https?://[^\s<>]+)', first_reply)
-            button_url = found_links[0] if found_links else None
-
+        # ✅ Prepare button with first converted link
+        button_url = list(converted_links.values())[0] if converted_links else None
         buttons = [[Button.url("🛒 Buy Now", button_url)]] if button_url else None
 
+        # ✅ Delete original message
         await event.delete()
         print("🗑️ Original message deleted.")
 
+        # ✅ Send updated message with button
         await client.send_message(
             destination_channel,
             final_text,
@@ -101,7 +108,7 @@ async def convert_and_repost(event):
 # === Run the bot ===
 async def main():
     await client.start()
-    print("🚀 Bot is running and converting all supported links...")
+    print("🚀 Bot is now converting and reposting from source channels...")
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
