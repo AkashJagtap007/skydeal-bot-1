@@ -8,7 +8,7 @@ api_hash = '6caf396bf1f8898478ce1d8bdb1b5a88'
 session_name = 'skydeal'
 
 # === Telegram usernames ===
-source_channels = ['realearnkaro', 'dealdost', 'skydeal_frostfibre', 'SkyDeal247']
+source_channels = ['realearnkaro', 'dealdost', 'skydeal_frostfibre']
 converter_bot = 'ekconverter15bot'
 destination_channel = 'SkyDeal247'
 
