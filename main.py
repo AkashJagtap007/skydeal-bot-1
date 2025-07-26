@@ -21,9 +21,14 @@ blocked_domains = ['myntra.com']
 def extract_all_valid_links(text):
     return re.findall(r'(https?://[^\s<>]+)', text)
 
+# === Check for only-link message ===
+def is_only_link(text):
+    return bool(re.fullmatch(r'https?://\S+', text.strip()))
+
 # === Telegram Client ===
 client = TelegramClient(session_name, api_id, api_hash)
 
+# === Convert and repost handler ===
 @client.on(events.NewMessage(chats=source_channels))
 async def convert_and_repost(event):
     text = event.raw_text or ""
@@ -87,6 +92,17 @@ async def convert_and_repost(event):
 
     except Exception as e:
         print(f"❌ Error: {e}")
+
+# === Auto-delete link-only messages in destination ===
+@client.on(events.NewMessage(chats=destination_channel))
+async def delete_link_only_messages(event):
+    text = event.raw_text or ""
+    if is_only_link(text):
+        try:
+            await event.delete()
+            print(f"🗑️ Deleted link-only message: {text}")
+        except Exception as e:
+            print(f"⚠️ Failed to delete message: {e}")
 
 # === Start bot + keep-alive ===
 async def start_bot():
