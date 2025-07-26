@@ -46,24 +46,33 @@ async def convert_and_repost(event):
             print(f"🤖 Sending to @{converter_bot}: {link}")
             async with client.conversation(converter_bot, timeout=30) as conv:
                 await conv.send_message(link)
-                reply = await conv.get_response()
-                converted_reply_text = reply.text.strip()
 
+                # Wait for only the first valid bot response
+                while True:
+                    reply = await conv.get_response()
+                    if reply.sender_id and reply.sender.username == converter_bot:
+                        break
+
+                converted_reply_text = reply.text.strip()
                 converted_links[link] = converted_reply_text
                 print(f"✅ Converted: {link} → {converted_reply_text}")
 
-        # Replace original links in the message with full bot reply texts
-        for original, converted_reply in converted_links.items():
-            final_text = final_text.replace(original, converted_reply)
+        # Replace each original link with full reply (not just URL)
+        for original, converted in converted_links.items():
+            final_text = final_text.replace(original, converted)
 
         final_text += "\n\n🛒 Buy now ✅"
 
-        # Create button with first link inside converted reply (if available)
-        button_link_candidates = extract_all_valid_links(list(converted_links.values())[0])
-        button_url = button_link_candidates[0] if button_link_candidates else None
+        # Create button with first converted link
+        button_url = None
+        if converted_links:
+            # Find first valid URL from the converted reply text
+            button_url = extract_all_valid_links(list(converted_links.values())[0])
+            button_url = button_url[0] if button_url else None
+
         buttons = [[Button.url("🔗 Buy Now", button_url)]] if button_url else None
 
-        # Send media + caption if photo exists
+        # Send message with or without media
         if event.photo or event.document:
             await client.send_file(
                 destination_channel,
