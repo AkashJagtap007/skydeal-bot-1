@@ -43,7 +43,7 @@ async def convert_and_repost(event):
         return
 
     converted_links = {}
-    final_text = text
+    final_text = None  # We'll use the bot's reply as message
 
     try:
         for link in links:
@@ -51,37 +51,38 @@ async def convert_and_repost(event):
             async with client.conversation(converter_bot, timeout=30) as conv:
                 await conv.send_message(link)
 
-                # Wait for a meaningful response (not just a plain link)
+                # Wait for a meaningful response (not just a link)
                 while True:
                     reply = await conv.get_response()
                     reply_text = reply.text.strip()
 
-                    # Skip link-only responses
+                    # Skip if reply is just a link
                     if re.fullmatch(r'https?://[^\s<>]+', reply_text):
                         print("⚠️ Skipped raw link-only response.")
                         continue
 
-                    # Extract usable converted link
                     match = re.search(r'(https?://[^\s<>]+)', reply_text)
                     if match:
                         converted_link = match.group(1)
                         converted_links[link] = converted_link
-                        print(f"✅ Valid converted response: {converted_link}")
+                        final_text = reply_text  # ✅ Use this reply as the message
+                        print(f"✅ Using this reply: {reply_text}")
                         break
 
                 await asyncio.sleep(1.5)
 
-        if not converted_links:
-            print("⛔ No links converted.")
+        if not converted_links or not final_text:
+            print("⛔ No valid response. Skipping.")
             return
 
-        for original, converted in converted_links.items():
-            final_text = final_text.replace(original, converted)
-
+        # Add tag to message
         final_text += "\n\n🛒 Buy now ✅"
+
+        # Use first converted link for button
         button_link = list(converted_links.values())[0]
         button = [[Button.url("🔗 Buy Now", button_link)]]
 
+        # Send to destination
         if event.photo or event.document:
             await client.send_file(
                 destination_channel,
@@ -101,7 +102,7 @@ async def convert_and_repost(event):
             print("📤 Text-only message posted.")
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Error during processing: {e}")
 
 # === Start bot + keep-alive ===
 async def start_bot():
