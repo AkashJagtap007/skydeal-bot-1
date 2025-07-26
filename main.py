@@ -25,7 +25,6 @@ client = TelegramClient(session_name, api_id, api_hash)
 async def convert_and_repost(event):
     text = event.raw_text or ""
 
-    # Skip already processed messages
     if '🛒 Buy now ✅' in text:
         print("⛔ Already processed.")
         return
@@ -47,32 +46,30 @@ async def convert_and_repost(event):
             async with client.conversation(converter_bot, timeout=30) as conv:
                 await conv.send_message(link)
 
-                # Wait for only the first valid bot response
-                while True:
-                    reply = await conv.get_response()
-                    if reply.sender_id and reply.sender.username == converter_bot:
-                        break
+                # Only accept message from the converter bot (not echo)
+                reply = await conv.get_response()
+                reply_text = reply.text.strip()
 
-                converted_reply_text = reply.text.strip()
-                converted_links[link] = converted_reply_text
-                print(f"✅ Converted: {link} → {converted_reply_text}")
+                # Store the full reply (e.g., "Get it here: https://converted.link")
+                converted_links[link] = reply_text
+                print(f"✅ Converted: {link} → {reply_text}")
 
-        # Replace each original link with full reply (not just URL)
+        # Replace original links with converted reply text
         for original, converted in converted_links.items():
             final_text = final_text.replace(original, converted)
 
         final_text += "\n\n🛒 Buy now ✅"
 
-        # Create button with first converted link
+        # Extract the first link from the converted reply to use in button
         button_url = None
         if converted_links:
-            # Find first valid URL from the converted reply text
-            button_url = extract_all_valid_links(list(converted_links.values())[0])
-            button_url = button_url[0] if button_url else None
+            first_converted_reply = list(converted_links.values())[0]
+            urls_in_reply = extract_all_valid_links(first_converted_reply)
+            button_url = urls_in_reply[0] if urls_in_reply else None
 
         buttons = [[Button.url("🔗 Buy Now", button_url)]] if button_url else None
 
-        # Send message with or without media
+        # Send final message
         if event.photo or event.document:
             await client.send_file(
                 destination_channel,
