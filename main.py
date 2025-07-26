@@ -50,15 +50,8 @@ async def convert_and_repost(event):
             print(f"🤖 Converting via @{converter_bot}: {link}")
             async with client.conversation(converter_bot, timeout=30) as conv:
                 await conv.send_message(link)
-                reply1 = await conv.get_response()
-                reply2 = await conv.get_response()
-
-                # Choose the reply that contains more text
-                if len(reply2.text.strip()) > len(reply1.text.strip()):
-                    converted_link = reply2.text.strip()
-                else:
-                    converted_link = reply1.text.strip()
-
+                reply = await conv.get_response()
+                converted_link = reply.text.strip()
                 converted_links[link] = converted_link
                 print(f"✅ Converted: {link} → {converted_link}")
                 await asyncio.sleep(1.5)
