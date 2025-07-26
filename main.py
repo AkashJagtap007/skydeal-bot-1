@@ -9,7 +9,7 @@ session_name = 'skydeal'
 
 # === Telegram usernames ===
 source_channels = ['realearnkaro', 'dealdost', 'skydeal_frostfibre']
-converter_bot = 'ekconverter15bot'
+converter_bot = 'ekconverter20bot'
 destination_channel = 'SkyDeal247'
 
 # === Supported and Blocked Domains ===
