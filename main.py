@@ -2,32 +2,32 @@ import asyncio
 import re
 import threading
 from telethon.sync import TelegramClient, events, Button
-from ping_server import app  # for Railway/Replit
+from ping_server import app  # For Railway/Replit keep-alive
 
 # === Telegram API Credentials ===
 api_id = 26429542
 api_hash = '6caf396bf1f8898478ce1d8bdb1b5a88'
 session_name = 'skydeal'
 
-# === Channels Setup ===
-source_channels = ['realearnkaro', 'dealdost', 'skydeal_frostfibre']
+# === Telegram Setup ===
+source_channels = ['skydeal_frostfibre']  # ✅ Only your source now
 destination_channel = 'SkyDeal247'
 converter_bot = 'ekconverter20bot'
 
 # === Blocked domains ===
 blocked_domains = ['myntra.com']
 
-# === Link extractor ===
+# === Extract links ===
 def extract_all_valid_links(text):
     return re.findall(r'(https?://[^\s<>]+)', text)
 
-# === Telegram client ===
+# === Telegram Client ===
 client = TelegramClient(session_name, api_id, api_hash)
 
 @client.on(events.NewMessage(chats=source_channels))
 async def convert_and_repost(event):
     text = event.raw_text or ""
-    print(f"\n🔔 New message received from: {event.chat.username or event.chat_id}")
+    print(f"\n🔔 New message from: {event.chat.username or event.chat_id}")
 
     if '🛒 Buy now ✅' in text:
         print("⏩ Already converted. Skipping.")
@@ -39,7 +39,7 @@ async def convert_and_repost(event):
         return
 
     if any(blocked in link for link in links for blocked in blocked_domains):
-        print("🚫 Blocked domain found (e.g., myntra). Skipping.")
+        print("🚫 Blocked domain (e.g. myntra) found. Skipping.")
         return
 
     converted_links = {}
@@ -47,7 +47,7 @@ async def convert_and_repost(event):
 
     try:
         for link in links:
-            print(f"🤖 Sending to @{converter_bot}: {link}")
+            print(f"🤖 Converting via @{converter_bot}: {link}")
             async with client.conversation(converter_bot, timeout=30) as conv:
                 await conv.send_message(link)
                 reply = await conv.get_response()
@@ -88,10 +88,10 @@ async def convert_and_repost(event):
     except Exception as e:
         print(f"❌ Error: {e}")
 
-# === Start bot + keep alive ===
+# === Start bot + keep-alive ===
 async def start_bot():
     await client.start()
-    print("🚀 SkyDeal Bot is live. Watching source channels...")
+    print("🚀 Bot is live. Watching: skydeal_frostfibre")
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
