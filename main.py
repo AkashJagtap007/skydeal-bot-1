@@ -12,103 +12,85 @@ source_channels = ['realearnkaro', 'dealdost', 'skydeal_frostfibre']
 converter_bot = 'ekconverter20bot'
 destination_channel = 'SkyDeal247'
 
-# === Supported domains ===
+# === Supported and Blocked Domains ===
 supported_domains = [
     'flipkart.com', 'dl.flipkart.com', 'fkrt.cc',
     'amazon.in', 'amzn.to', 'ajio.com',
     'ekaro.in', 'bit.ly', 'ekart.shop'
 ]
-
-# === Blocked domains ===
 blocked_domains = ['myntra.com']
 
-# === Extract all supported links ===
 def extract_supported_links(text):
     matches = re.findall(r'(https?://[^\s<>]+)', text)
     links = []
     for url in matches:
-        if any(blocked in url for blocked in blocked_domains):
-            return []  # Skip entire message if blocked domain present
+        if any(bad in url for bad in blocked_domains):
+            return []  # If any blocked domain is found, skip the message
         if any(domain in url for domain in supported_domains):
             links.append(url.strip().split('?')[0])
     return links
 
-# === Setup Telegram client ===
 client = TelegramClient(session_name, api_id, api_hash)
 
 @client.on(events.NewMessage(chats=source_channels))
-async def convert_and_repost(event):
+async def handler(event):
     if event.out or event.sender_id == (await client.get_me()).id:
         return
 
     text = event.raw_text or ""
-    print(f"📥 Message received in {event.chat.username or 'source'}")
-    print(f"🔍 Text: {text[:300]}")
-
     if '🛒 Buy Now' in text or '#converted' in text:
-        print("⛔ Already processed. Skipping.")
         return
 
     links = extract_supported_links(text)
     if not links:
-        print("❌ No valid (or blocked) links found. Skipping.")
         return
 
     converted_links = {}
 
     try:
         for link in links:
-            print(f"🤖 Sending to @{converter_bot}: {link}")
             async with client.conversation(converter_bot, timeout=30) as conv:
                 await conv.send_message(link)
-
                 while True:
                     reply = await conv.get_response()
                     reply_text = reply.text.strip()
-                    if len(reply_text) > 30 and 'http' in reply_text:
+                    if 'http' in reply_text and len(reply_text) > 20:
                         break
 
-            # ✅ Extract only the converted URL from bot's reply
+            # ✅ Extract only link from bot's reply
             converted_url_match = re.search(r'(https?://[^\s<>]+)', reply_text)
             if not converted_url_match:
-                print(f"⚠️ No valid converted link in: {reply_text}")
                 continue
-
             converted_url = converted_url_match.group(1)
             converted_links[link] = converted_url
-            print(f"✅ Converted: {link} → {converted_url}")
 
-        # ✅ Replace all original links with converted links
+        # ✅ Replace original links with converted links
         final_text = text
         for original, converted in converted_links.items():
             final_text = final_text.replace(original, converted)
 
         final_text += "\n\n#converted"
 
-        # ✅ Prepare button with first converted link
-        button_url = list(converted_links.values())[0] if converted_links else None
-        buttons = [[Button.url("🛒 Buy Now", button_url)]] if button_url else None
+        # ✅ Create button from first converted link
+        button_url = list(converted_links.values())[0]
+        buttons = [[Button.url("🛒 Buy Now", button_url)]]
 
-        # ✅ Delete original message
         await event.delete()
-        print("🗑️ Original message deleted.")
 
-        # ✅ Send updated message with button
+        # ✅ Send only the cleaned, final message
         await client.send_message(
             destination_channel,
             final_text,
             buttons=buttons,
             link_preview=False
         )
-        print(f"📤 Sent converted message to {destination_channel}")
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
 
-# === Run the bot ===
 async def main():
     await client.start()
-    print("🚀 Bot is now converting and reposting from source channels...")
+    print("🚀 Bot started.")
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
