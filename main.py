@@ -49,8 +49,11 @@ async def convert_and_repost(event):
         converted_links = {}
 
         for link in links:
-            async with client.conversation(converter_bot, timeout=30) as conv:
-                await conv.send_message(link)
+           async with client.conversation(converter_bot, timeout=30) as conv:
+    await conv.send_message(link)
+    for i in range(3):
+        reply = await conv.get_response()
+        print(f"Reply {i+1}: {reply.text}\n---")
 
                 # 🚫 Ignore first reply (usually just short link)
                 await conv.get_response()
