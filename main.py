@@ -10,7 +10,7 @@ api_hash = '6caf396bf1f8898478ce1d8bdb1b5a88'
 session_name = 'skydeal'
 
 # === Telegram Setup ===
-source_channels = ['skydeal_frostfibre']  # ✅ Only your source now
+source_channels = ['skydeal_frostfibre', 'dealdost', 'realearnkaro']
 destination_channel = 'SkyDeal247'
 converter_bot = 'ekconverter20bot'
 
@@ -91,7 +91,7 @@ async def convert_and_repost(event):
 # === Start bot + keep-alive ===
 async def start_bot():
     await client.start()
-    print("🚀 Bot is live. Watching: skydeal_frostfibre")
+    print("🚀 Bot is live. Watching: skydeal_frostfibre, dealdost, realearnkaro")
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
