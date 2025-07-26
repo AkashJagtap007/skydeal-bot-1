@@ -9,7 +9,7 @@ session_name = 'skydeal'
 
 # === Telegram usernames ===
 source_channels = ['realearnkaro', 'dealdost', 'skydeal_frostfibre']
-converter_bot = 'ekconverter15bot'
+converter_bot = 'ekconverter15bot'  # Updated bot
 destination_channel = 'SkyDeal247'
 
 # === Supported and Blocked Domains ===
@@ -20,15 +20,14 @@ supported_domains = [
 ]
 blocked_domains = ['myntra.com']
 
-# === Extract supported links ===
 def extract_supported_links(text):
     matches = re.findall(r'(https?://[^\s<>]+)', text)
     links = []
     for url in matches:
         if any(bad in url for bad in blocked_domains):
-            return []  # Skip entire message if blocked domain is found
+            return []
         if any(domain in url for domain in supported_domains):
-            links.append(url.strip())  # Keep full URL including query params
+            links.append(url.strip())
     return links
 
 client = TelegramClient(session_name, api_id, api_hash)
@@ -53,37 +52,33 @@ async def convert_and_repost(event):
             async with client.conversation(converter_bot, timeout=30) as conv:
                 await conv.send_message(link)
 
-                # ❌ First message is usually just a short link
-                first_reply = await conv.get_response()
+                # 🚫 First message is ignored
+                await conv.get_response()
 
-                # ✅ Second message is the one we want (contains product info)
-                second_reply = await conv.get_response()
-                reply_text = second_reply.text.strip()
+                # ✅ Second message is the actual response to use
+                reply = await conv.get_response()
+                reply_text = reply.text.strip()
 
-                # Extract converted URL from the detailed reply
+                # Extract converted link
                 converted_url_match = re.search(r'(https?://[^\s<>]+)', reply_text)
                 if not converted_url_match:
                     continue
                 converted_url = converted_url_match.group(1)
                 converted_links[link] = converted_url
 
-                await asyncio.sleep(1.5)  # Prevent bot from rate-limiting
+                await asyncio.sleep(1.5)
 
-        # ✅ Replace original links with converted ones in text
         final_text = text
         for original, converted in converted_links.items():
             final_text = final_text.replace(original, converted)
 
         final_text += "\n\n#converted"
 
-        # ✅ Add Buy Now button with the first converted link
         button_url = list(converted_links.values())[0]
         buttons = [[Button.url("🛒 Buy Now", button_url)]]
 
-        # ✅ Delete original message
         await event.delete()
 
-        # ✅ Send modified message with button to destination channel
         await client.send_message(
             destination_channel,
             final_text,
@@ -94,7 +89,6 @@ async def convert_and_repost(event):
     except Exception as e:
         print(f"❌ Error: {e}")
 
-# === Run bot ===
 async def main():
     await client.start()
     print("🚀 SkyDeal Bot is running...")
