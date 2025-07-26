@@ -47,18 +47,21 @@ async def convert_and_repost(event):
             async with client.conversation(converter_bot, timeout=30) as conv:
                 await conv.send_message(link)
                 reply = await conv.get_response()
-                converted_link = reply.text.strip()
-                converted_links[link] = converted_link
-                print(f"✅ Converted: {link} → {converted_link}")
+                converted_reply_text = reply.text.strip()
 
-        # Replace original links with converted links
-        for original, converted in converted_links.items():
-            final_text = final_text.replace(original, converted)
+                converted_links[link] = converted_reply_text
+                print(f"✅ Converted: {link} → {converted_reply_text}")
+
+        # Replace original links in the message with full bot reply texts
+        for original, converted_reply in converted_links.items():
+            final_text = final_text.replace(original, converted_reply)
 
         final_text += "\n\n🛒 Buy now ✅"
 
-        # Create button with first converted link
-        button = [[Button.url("🔗 Buy Now", list(converted_links.values())[0])]]
+        # Create button with first link inside converted reply (if available)
+        button_link_candidates = extract_all_valid_links(list(converted_links.values())[0])
+        button_url = button_link_candidates[0] if button_link_candidates else None
+        buttons = [[Button.url("🔗 Buy Now", button_url)]] if button_url else None
 
         # Send media + caption if photo exists
         if event.photo or event.document:
@@ -66,7 +69,7 @@ async def convert_and_repost(event):
                 destination_channel,
                 file=event.media,
                 caption=final_text,
-                buttons=button,
+                buttons=buttons,
                 link_preview=False
             )
             print("🖼️ Sent media with converted links.")
@@ -74,7 +77,7 @@ async def convert_and_repost(event):
             await client.send_message(
                 destination_channel,
                 final_text,
-                buttons=button,
+                buttons=buttons,
                 link_preview=False
             )
             print("📤 Sent text message with converted links.")
